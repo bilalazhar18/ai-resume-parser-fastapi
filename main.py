@@ -1,12 +1,12 @@
-
 from fastapi import FastAPI
 
 from app.routes import users, products, resume
 
+
 app = FastAPI(
     title="AI Resume Parser API",
     description="FastAPI backend with Gemini AI integration",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 app.include_router(users.router)

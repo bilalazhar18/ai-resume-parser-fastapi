@@ -1,9 +1,9 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-import random
-
-from fastapi import APIRouter, HTTPException
-from app.models.schemas import UserModel
-from app.database import users_db
+from app.crud import users as crud
+from app.schemas.users import UserCreate, UserResponse, UserUpdate
+from app.session import get_db
 
 router = APIRouter(
     prefix="/users",
@@ -11,62 +11,55 @@ router = APIRouter(
 )
 
 
-@router.get("")
-def get_users_all():
-    return users_db
+@router.post("", response_model=UserResponse, status_code=201)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing = crud.get_user_email(db, email=user.email)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="Email already exists"
+        )
+    try:
+        return crud.create_user(db, user=user)
+    except crud.DuplicateEmailError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.get("/{user_id}")
-def get_specific_user(user_id: int):
-    if user_id not in users_db:
+@router.get("", response_model=list[UserResponse])
+def get_all_user(db: Session = Depends(get_db)):
+    return crud.get_user_all(db)
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+def get_specific_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = crud.get_user(db, user_id=user_id)
+    if db_user is None:
         raise HTTPException(
             status_code=404,
             detail="User not found"
         )
-    return users_db[user_id]
+    return db_user
 
 
-@router.post("")
-def create_user(userData: UserModel):
-    user_id = random.randint(1000, 9999)
-
-    while user_id in users_db:
-        user_id = random.randint(1000, 9999)
-
-    users_db[user_id] = userData
-
-    return {
-        "message": "User created successfully",
-        "user_id": user_id
-    }
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
+    if crud.get_user(db, user_id=user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing = crud.get_user_email(db, email=user.email)
+    if existing is not None and existing.id != user_id:
+        raise HTTPException(status_code=409, detail="Email already exists")
+    try:
+        return crud.user_update(db, user_id=user_id, user_data=user)
+    except crud.DuplicateEmailError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.put("/{user_id}")
-def update_user(user_id: int, userData: UserModel):
-    if user_id not in users_db:
+@router.delete("/{user_id}", response_model=UserResponse)
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = crud.delete_user(db, user_id=user_id)
+    if db_user is None:
         raise HTTPException(
             status_code=404,
             detail="User not found"
         )
-
-    users_db[user_id] = userData
-
-    return {
-        "message": "User updated successfully",
-        "user_id": user_id
-    }
-
-
-@router.delete("/{user_id}")
-def delete_user(user_id: int):
-    if user_id not in users_db:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-
-    del users_db[user_id]
-
-    return {
-        "message": "User deleted successfully"
-    }
+    return db_user

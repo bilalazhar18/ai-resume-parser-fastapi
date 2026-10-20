@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter
-from app.models.schemas import ProductModel
+from app.schemas.products import ProductModel
 
 router = APIRouter(
     prefix="/products",
