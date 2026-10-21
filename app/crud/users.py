@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.schemas.users import UserCreate, UserUpdate
-from app.security import hash_password
-
+from app import security
 
 class DuplicateEmailError(ValueError):
     """A user already owns this email address."""
@@ -24,10 +23,11 @@ def _save(db: Session, user: User) -> User:
 
 
 def create_user(db: Session, user: UserCreate) -> User:
+    pwd_password=security.get_password_hash(user.password)
     db_user = User(
         name=user.name,
         email=user.email,
-        hash_password=hash_password(user.password),
+        hash_password=pwd_password,
     )
     db.add(db_user)
     return _save(db, db_user)
@@ -52,7 +52,7 @@ def user_update(db: Session, user_id: int, user_data: UserUpdate) -> User | None
     db_user.name = user_data.name
     db_user.email = user_data.email
     if user_data.password is not None:
-        db_user.hash_password = hash_password(user_data.password)
+        db_user.hash_password = security.get_password_hash(user_data.password)
     return _save(db, db_user)
 
 
