@@ -51,25 +51,6 @@ The prompt requests the following structure. This is an illustrative response, n
 }
 ```
 
-## Technology and dependencies
-
-Direct dependencies are defined in [`requirements.txt`](requirements.txt). Installing that file also installs their supporting dependencies; SQLite itself is included with Python.
-
-| Dependency | Purpose |
-| --- | --- |
-| `fastapi` | API routing, dependency injection, and OpenAPI documentation |
-| `uvicorn` | ASGI server for running the application |
-| `sqlalchemy` | User model, database queries, and database sessions |
-| `alembic>=1.13,<2` | Migration tooling dependency; a working migration setup is not currently included |
-| `pydantic[email]>=2` | Request/response models and email validation |
-| `pwdlib[argon2,bcrypt]>=0.2,<1` | Argon2 password hashing and legacy bcrypt verification |
-| `python-jose[cryptography]` | JWT creation and validation |
-| `google-genai` | Gemini API client |
-| `httpx` | HTTP client and handling of upstream HTTP errors |
-| `python-dotenv` | Load Gemini configuration from `.env` |
-| `python-multipart` | PDF uploads and form-based login |
-| `pypdf` | Extract text from PDF pages |
-
 ## Run locally
 
 Use Python 3.10 or newer. A Gemini API key and network access are required for resume parsing. User and product endpoints do not require a Gemini key.
