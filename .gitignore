@@ -5,10 +5,12 @@ env/
 .env/
 ENV/
 
-# Python bytecode and generated packages
+# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Build and packaging artifacts
 build/
 dist/
 *.egg-info/
@@ -25,6 +27,8 @@ dist/
 .coverage.*
 htmlcov/
 coverage.xml
+*.cover
+*.py,cover
 
 # Local environment settings; keep shareable templates
 .env
@@ -36,6 +40,8 @@ coverage.xml
 # Editor settings
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Local database and backups
 app.db
@@ -51,3 +57,11 @@ app.db.*.bak
 *.sqlite3-wal
 *.sqlite-shm
 *.sqlite3-shm
+
+# Runtime logs
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

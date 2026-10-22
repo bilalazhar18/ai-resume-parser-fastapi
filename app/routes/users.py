@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Response,Request
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from app.models.user import User
@@ -19,18 +19,30 @@ router = APIRouter(
 oauth2_scheme=OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router.post("", response_model=UserResponse, status_code=201)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=UserResponse)
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
     existing = crud.get_user_email(db, email=user.email)
     if existing:
         raise HTTPException(
-            status_code=409,
+            status_code=400,
             detail="Email already exists"
         )
     try:
         return crud.create_user(db, user=user)
     except crud.DuplicateEmailError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+@router.post("/login")
+def login(response:Response,form_data:OAuth2PasswordRequestForm=Depends(), db:Session=Depends(get_db)):
+    user=crud.get_user_email(db,email=form_data.username)
+    if not user or not security.verify_password(form_data.password,user.hash_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect Email or Password"
+        )
+    access_token=security.create_access_token(data={"sub":user.email})
+    response.set_cookie(key="access_token",value=f"Bearer {access_token}", httponly=True, max_age=1800, expires=1800, samesite="lax", secure=True)
+    return {"message":"Session initialized Successfully"}
 
 
 @router.get("", response_model=list[UserResponse])
@@ -72,20 +84,15 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         )
     return db_user
 
-@router.post("/token")
-def login_for_access_token(form_data:OAuth2PasswordRequestForm=Depends(), db:Session=Depends(get_db)):
-    user=crud.get_user_email(db,email=form_data.username)
-    if not user or not security.verify_password(form_data.password,user.hash_password):
+
+def get_current_user_from_cookie(request:Request, db:Session=Depends(get_db)):
+    token_cookie=request.cookies.get("access_token")
+    if not token_cookie or not token_cookie.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
-            detail="Incorrect Email or Password"
+            detail="Missing or invalid authentication token",
         )
-    access_token_expires=timedelta(minutes=security.ACCESS_TOKEN_EXPIRATION_MINUTES)
-    access_token=security.create_access_token(data={"sub":user.email},expires_delta=access_token_expires)
-    return {"access_token":access_token,"token_type":"bearer"}
-
-
-def get_current_user(token:str=Depends(oauth2_scheme),db:Session=Depends(get_db)):
+    token=token_cookie.split(" ")[1]
     try:
         payload=jwt.decode(token,security.SECURITY_KEY,algorithms=[security.ALGORITHM])
         email: str=payload.get("sub")
@@ -108,5 +115,11 @@ def get_current_user(token:str=Depends(oauth2_scheme),db:Session=Depends(get_db)
     return user
 
 @router.get("/me",response_model=UserResponse)
-def read_users_me(current_user: User=Depends(get_current_user)):
+def read_users_me(current_user: User=Depends(get_current_user_from_cookie)):
     return current_user
+
+
+@router.post("/logout")
+def logout(response:Response):
+    response.delete_cookie(key="access_token")
+    return {"message": "Session Cleared Successful"}

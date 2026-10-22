@@ -1,4 +1,6 @@
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
+from pwdlib.hashers.bcrypt import BcryptHasher
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 
@@ -6,7 +8,7 @@ SECURITY_KEY="SUPER_SECRET_RANDOM_STRING"
 ALGORITHM="HS256" #HMAC WITH SHA 256"
 ACCESS_TOKEN_EXPIRATION_MINUTES=30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = PasswordHash((Argon2Hasher(), BcryptHasher()))
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -23,4 +25,7 @@ def get_password_hash(password: str):
 
 
 def verify_password(plain_password: str, hashed_password: str):
+    # bcrypt 5 rejects inputs longer than 72 bytes for legacy bcrypt hashes.
+    if BcryptHasher.identify(hashed_password) and len(plain_password.encode("utf-8")) > 72:
+        return False
     return pwd_context.verify(plain_password, hashed_password)
